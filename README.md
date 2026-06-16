@@ -1,8 +1,8 @@
 # DaVinci-Resolve-Animation-Sync-Script
 Used for syncing animations to a WAV file by automatically changing it's speed to fit between audio pulses. 
 
-![Example Image](Examples/DemoImage.jpg)
-Also check out the video: ![Example Video](Examples/Demo1.mp4)
+![Example Image](Images/DemoImage.jpg)
+Also check out the video: ![Example Video](Videos/Demo1.mp4)
 
 ## Installation 
 
