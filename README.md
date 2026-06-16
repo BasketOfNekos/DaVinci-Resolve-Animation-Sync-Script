@@ -72,8 +72,4 @@ Use Loops (NOT IMPLEMENTED YET) <br />
 If you want to make a value change outside of the specified animation, you can set the animation to loop in the node settings or spline editor and then check this to open up those controls for use. <br />
 This locks "Manually Cache Frames" because one will effectively negate the other. 
 
-Alternatively you can achieve this effect by setting up 2 animations and fade between them with a dissolve node.
-
-## Credits
-
-The midiEdited.lua file is an edited version of midi.lua by Possseidon: https://github.com/Possseidon/lua-midi
+Alternatively you can achieve a similar effect by setting up 2 animations and fading between them with a dissolve node.
