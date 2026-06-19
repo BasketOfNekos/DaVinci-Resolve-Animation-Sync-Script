@@ -40,7 +40,7 @@ function Create()
     InAnimationPoints = self:AddInput("Loop Points", "AnimationPoints", {
         LINKID_DataType = "Text",
         INPID_InputControl = "TextEditControl",
-        INPS_DefaultText = "Example:\n{1,2,3}",
+        INPS_DefaultText = "Example:\n{1,2,_,3,4}",
         INP_DoNotifyChanged = true,
         TEC_ReadOnly = false,
         TEC_DeferSetInputs = true,
@@ -59,7 +59,7 @@ function Create()
         INP_Integer = true,
         INP_MinScale = 1,
         INP_MaxScale = 1,
-        INP_DoNotifyChanged = true,
+        INP_DoNotifyChanged = false,
     })
 
 --- @UI Merge Apply Mode:
@@ -131,7 +131,7 @@ function Create()
         local itemEnd = item:GetEnd()
 
         print("ProjectFrameRate ", projectFrameRate, " projectLength ", projectLength, " itemLength ", itemlength, " TrackStart ", itemStart - 3600 * projectFrameRate)
-        -- tool.FrameRate = projectFrameRate * 2
+        tool.FrameRate = projectFrameRate
         tool.TrackLength = itemlength
         tool.TrackStart = itemStart - 3600 * projectFrameRate -- Because DaVinci starts an hour in
         ]],
@@ -439,21 +439,21 @@ function Create()
 --- @UI Manually Cache Frames:
 -- This has been made so it will stop asking the node tree upstream when it finishes caching all the frames.
 -- You may or may not have issues with fusion automatically unloading some of the frames needed for this node. This will (hopefully) resolve that.
-    InFrameCashe = self:AddInput("Manually Cache Frames", "FrameCache", {
-        LINKID_DataType = "Number",
-        INPID_InputControl = "CheckboxControl",
-        INP_Default = 0,
-        INP_Disabled = false,
-    })
+--     InFrameCashe = self:AddInput("Manually Cache Frames", "FrameCache", {
+--         LINKID_DataType = "Number",
+--         INPID_InputControl = "CheckboxControl",
+--         INP_Default = 0,
+--         INP_Disabled = false,
+--     })
 
 --- @UI Use Loops:
 -- If you want to make a value change outside of the specified animation, you can set the animation to loop in the spline editor and then check this to open up those controls for use. This locks "Manually Cache Frames" because one will effectively negate the other.
-    InUseLoops = self:AddInput("Use Loops", "UseLoops", {
-        LINKID_DataType = "Number",
-        INPID_InputControl = "CheckboxControl",
-        INP_DoNotifyChanged = true,
-        INP_Default = 0,
-    })
+--     InUseLoops = self:AddInput("Use Loops", "UseLoops", {
+--         LINKID_DataType = "Number",
+--         INPID_InputControl = "CheckboxControl",
+--         INP_DoNotifyChanged = true,
+--         INP_Default = 0,
+--     })
 
     self:EndControlNest()
 
@@ -575,39 +575,63 @@ function WavParser(req)
 end
 
 
-
---- Finds the frame of the input animation to play at any given moment.
---- 0.1 means nothing plays
-function FindFrame(req, beatTimes)
-    local currentFrame = req.Time
-    local RemoveRounding = InRemoveVideoRounding:GetValue(req).Value
-    local RawAnimationPoints = InAnimationPoints:GetValue(req).Value
-    local UseLoopSlider = InUseLoopSlider:GetValue(req).Value
-    local LoopNum = InLoopNum:GetValue(req).Value
+function textParser(req)
     local animationPoints = {}
-    if RawAnimationPoints ~= "" and RawAnimationPoints ~= "Example:\n{1,2,3}" then
-        for tableValue in string.gmatch(RawAnimationPoints, "([%w%d%.]+)") do
-            animationPoints = InsertInOrder(animationPoints, tableValue + 0) -- +0 to turn it into a number instead of a string
+    local wavTimes = {{}}
+    local RawAnimationPoints = InAnimationPoints:GetValue(req).Value
+
+    -- Read "Loop Points" text box
+    if RawAnimationPoints ~= "" and RawAnimationPoints ~= "Example:\n{1,2,_,3,4}" then
+        for tableValue in string.gmatch(RawAnimationPoints, "([%d%.%_]+)") do
+            if tableValue == "_" then
+                table.insert(animationPoints, -1)
+            else
+                animationPoints = InsertInOrder(animationPoints, tableValue + 0) -- +0 to turn it into a number instead of a string
+            end
         end
         if #animationPoints < 2 then
             print("Error: Not enough values")
             return nil
         end
+
+        -- Assemble a more usable table
+        for _, tableValue in pairs(animationPoints) do
+            if tableValue == -1 then
+                wavTimes[#wavTimes][1] = nil
+            elseif wavTimes[#wavTimes][1] == nil then
+                wavTimes[#wavTimes][1] = tableValue
+            elseif wavTimes[#wavTimes][1] ~= nil then
+                wavTimes[#wavTimes][2] = tableValue
+                wavTimes[#wavTimes + 1] = {tableValue}
+            end
+        end
+        wavTimes[#wavTimes] = nil
     else return nil end
+
+    return wavTimes
+end
+
+
+--- Finds the frame of the input animation to play at any given moment.
+--- 0.1 means nothing plays
+function FindFrame(req, beatTimes, wavTimes)
+    local currentFrame = req.Time
+    local RemoveRounding = InRemoveVideoRounding:GetValue(req).Value
+    local UseLoopSlider = InUseLoopSlider:GetValue(req).Value
+    local LoopNum = InLoopNum:GetValue(req).Value
+    local pointsTable = {}
+
     -- get current and next beat
     local loopIndex = 0
     local currentBeat = 0
     local nextBeat = 0
     local beatDifference = 0
     local success = false
-    if currentFrame < beatTimes[1] then return nil -- Before
+    if currentFrame < beatTimes[1] then return nil -- Before any beat is played
     else
-        for i=1, #beatTimes - 1 do
+        for i=2, #beatTimes do
             if currentFrame < beatTimes[i] then
-                loopIndex = math.fmod(i - 1, #animationPoints - 1) - 1
-                if loopIndex == -1 then
-                    loopIndex = #animationPoints - 2
-                end
+                loopIndex = math.fmod(i + #wavTimes - 2, #wavTimes) + 1
                 currentBeat = beatTimes[i - 1]
                 nextBeat = beatTimes[i]
                 beatDifference = nextBeat - currentBeat
@@ -616,16 +640,17 @@ function FindFrame(req, beatTimes)
             end
         end
     end
-    if success == false then return nil end -- After
+    if success == false then return nil end -- After any beat is played
 
+    -- Figure out which frames to loop over in the animation
     local FrameStart = 0
     local FrameEnd = 0
     if UseLoopSlider == 1 then
-        FrameStart = animationPoints[LoopNum]
-        FrameEnd = animationPoints[LoopNum + 1]
+        FrameStart = wavTimes[LoopNum][1]
+        FrameEnd = wavTimes[LoopNum][2]
     else
-        FrameStart = animationPoints[loopIndex + 1]
-        FrameEnd = animationPoints[loopIndex + 2]
+        FrameStart = wavTimes[loopIndex][1]
+        FrameEnd = wavTimes[loopIndex][2]
     end
     local frameDifference = FrameEnd - FrameStart
 
@@ -634,6 +659,7 @@ function FindFrame(req, beatTimes)
         return nil
     end
 
+    -- Figure out what frame to play
     if RemoveRounding == 1 then
         return (frameDifference / beatDifference) * (currentFrame - currentBeat) + FrameStart
     else
@@ -647,7 +673,7 @@ end
 function Process(req)
     -- Get UI parameters
     local apply_mode = InApply:GetValue(req).Value + 1
-    local ManualCache = InFrameCashe:GetValue(req).Value
+--     local ManualCache = InFrameCashe:GetValue(req).Value
 
     -- From UI drop downs
     local apply_modes = {
@@ -666,8 +692,10 @@ function Process(req)
 
     -- Take care of the fake global variables.
     beatTimes = beatTimes or WavParser(req)
+    wavTimes = wavTimes or textParser(req)
     if RefreshWav == 1 then
         beatTimes = WavParser(req)
+        wavTimes = textParser(req)
         InWav:SetAttrs({INP_Default = 0})
         RefreshTable = 1 -- Also refresh the time table
         RefreshCashe = 1 -- Also refresh the cashed frames
@@ -677,7 +705,7 @@ function Process(req)
     local out = Image({IMG_NoData = true})  -- pg 79 https://www.steakunderwater.com/VFXPedia/96.0.243.189/index9205.html?title=Eyeon:Script/Reference/Applications/Fuse/Classes/Image/Attributes
     out:Clear()
 
-    local requestedKeyFrame = FindFrame(req, beatTimes)
+    local requestedKeyFrame = FindFrame(req, beatTimes, wavTimes)
     if requestedKeyFrame ~= nil then
         local tmpImage = InBackground:GetSource(requestedKeyFrame)
         out:Merge(tmpImage, {
@@ -725,13 +753,14 @@ function NotifyChanged(inp, param, time)
     end
 
     -- Disables manual frame caching when using floating point frames. Esures high quality and reduces wasted memory.
-    if inp == InRemoveTimeRounding or InUseLoops or InRemoveVideoRounding then
-        if param.Value == 1 then
-            InFrameCashe:SetSource(Number(0), 0)
-            InFrameCashe:SetAttrs({INP_Disabled = true})
-        else
-            InFrameCashe:SetAttrs({INP_Disabled = false})
-        end
+--     if inp == InRemoveTimeRounding or InUseLoops or InRemoveVideoRounding then
+    if inp == InRemoveTimeRounding or InRemoveVideoRounding then
+--         if param.Value == 1 then
+--             InFrameCashe:SetSource(Number(0), 0)
+--             InFrameCashe:SetAttrs({INP_Disabled = true})
+--         else
+--             InFrameCashe:SetAttrs({INP_Disabled = false})
+--         end
         InWav:SetAttrs({INP_Default = 1})
     end
 
@@ -739,12 +768,12 @@ function NotifyChanged(inp, param, time)
 
     -- updates InLoopNum's max value
     if inp == InAnimationPoints then
-        local maxValue = 0
         if param.Value == nil or param.Value == "" then
             return
         else
             local _, count = param.Value:gsub(",","")
-            InLoopNum:SetAttrs({INP_MaxScale = count})
+            local _, _count = param.Value:gsub("_","")
+            InLoopNum:SetAttrs({INP_MaxScale = count - _count * 2})
         end
     end
 
