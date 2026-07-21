@@ -144,7 +144,7 @@ function Create()
         LINKID_DataType = "Number",
         INPID_InputControl = "ScrewControl",
         INP_DoNotifyChanged = true,
-        INP_Integer = true,
+        INP_Integer = false,
         INP_MinScale = 0.0,
         INP_Default = 120,
     })
@@ -168,6 +168,33 @@ function Create()
         INP_Integer = true,
         INP_MinScale = 0.0,
         INP_Default = 0,
+    })
+
+    self:EndControlNest()
+
+    self:BeginControlNest("Timing Curve", "TimingCurve", false);
+
+    inTimingPresets = self:AddInput("Preset", "TimingPreset", {
+        LINKID_DataType = "Number",
+        INPID_InputControl = "ComboControl",
+        INP_Default = 0.0,
+        INP_Integer = true,
+        CC_LabelPosition = "Horizontal",
+        INP_DoNotifyChanged = false,
+        { CCS_AddString = "Linear", },
+        { CCS_AddString = "Punch", },
+        { CCS_AddString = "Whip", },
+        { CCS_AddString = "EaseInOut", },
+        { CCS_AddString = "PunchInOut", },
+    })
+
+    InMultiply = self:AddInput("Multiply", "Multiply", {
+        INPID_InputControl = "SliderControl",
+        INP_Default = 2,
+        INP_Integer = false,
+        INP_MinScale = 1,
+        INP_MaxScale = 7,
+        INP_DoNotifyChanged = false,
     })
 
     self:EndControlNest()
@@ -619,6 +646,8 @@ function FindFrame(req, beatTimes, wavTimes)
     local RemoveRounding = InRemoveVideoRounding:GetValue(req).Value
     local UseLoopSlider = InUseLoopSlider:GetValue(req).Value
     local LoopNum = InLoopNum:GetValue(req).Value
+    local timingPresets = inTimingPresets:GetValue(req).Value + 1
+    local mult = InMultiply:GetValue(req).Value
     local pointsTable = {}
 
     -- get current and next beat
@@ -642,6 +671,11 @@ function FindFrame(req, beatTimes, wavTimes)
     end
     if success == false then return nil end -- After any beat is played
 
+    if beatDifference == 0 then
+        print("Error")
+        return nil
+    end
+
     -- Figure out which frames to loop over in the animation
     local FrameStart = 0
     local FrameEnd = 0
@@ -654,16 +688,40 @@ function FindFrame(req, beatTimes, wavTimes)
     end
     local frameDifference = FrameEnd - FrameStart
 
-    if beatDifference == 0 then
+    if frameDifference == 0 then
         print("Error")
         return nil
     end
 
     -- Figure out what frame to play
+    local timingPresetMath = {
+        [1] = function(input) -- Linear
+            return input
+        end,
+        [2] = function(input) -- Punch
+            return (input / frameDifference) ^ mult * frameDifference
+        end,
+        [3] = function(input) -- Whip
+            return (input / frameDifference) ^ (1 / mult) * frameDifference
+        end,
+        [4] = function(input) -- EaseInOut
+            local x = input / frameDifference
+            if x < 0.5 then
+                return (0.5 * (2*x)^mult) * frameDifference
+            else
+                return (1 - 0.5 * (2*(1 - x))^mult) * frameDifference
+            end
+        end,
+        [5] = function(input) -- PunchInOut
+            local x = input / frameDifference
+            return ((x ^ mult) + (x ^ (1 / mult))) / 2 * frameDifference
+        end,
+    }
+
     if RemoveRounding == 1 then
-        return (frameDifference / beatDifference) * (currentFrame - currentBeat) + FrameStart
+        return timingPresetMath[timingPresets]((frameDifference / beatDifference) * (currentFrame - currentBeat) + FrameStart)
     else
-        return math.floor((frameDifference / beatDifference) * (currentFrame - currentBeat) + FrameStart)
+        return math.floor(timingPresetMath[timingPresets]((frameDifference / beatDifference) * (currentFrame - currentBeat) + FrameStart))
     end
 end
 
