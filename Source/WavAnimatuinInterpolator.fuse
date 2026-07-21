@@ -699,22 +699,26 @@ function FindFrame(req, beatTimes, wavTimes)
             return input
         end,
         [2] = function(input) -- Punch
-            return (input / frameDifference) ^ mult * frameDifference
+            local input = input - FrameStart
+            return (input / frameDifference) ^ mult * frameDifference + FrameStart
         end,
         [3] = function(input) -- Whip
-            return (input / frameDifference) ^ (1 / mult) * frameDifference
+            local input = input - FrameStart
+            return (input / frameDifference) ^ (1 / mult) * frameDifference + FrameStart
         end,
         [4] = function(input) -- EaseInOut
+            local input = input - FrameStart
             local x = input / frameDifference
             if x < 0.5 then
-                return (0.5 * (2*x)^mult) * frameDifference
+                return (0.5 * (2*x)^mult) * frameDifference + FrameStart
             else
-                return (1 - 0.5 * (2*(1 - x))^mult) * frameDifference
+                return (1 - 0.5 * (2*(1 - x))^mult) * frameDifference + FrameStart
             end
         end,
         [5] = function(input) -- PunchInOut
+            local input = input - FrameStart
             local x = input / frameDifference
-            return ((x ^ mult) + (x ^ (1 / mult))) / 2 * frameDifference
+            return ((x ^ mult) + (x ^ (1 / mult))) / 2 * frameDifference + FrameStart
         end,
     }
 
