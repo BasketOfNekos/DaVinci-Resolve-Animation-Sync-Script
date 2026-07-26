@@ -35,6 +35,156 @@ function Create()
 
     self:BeginControlNest("Standard Controls", "StandardControls", true);
 
+    InBypass = self:AddInput("Bypass", "Bypass", {
+        LINKID_DataType = "Number",
+        INPID_InputControl = "CheckboxControl",
+        INP_DoNotifyChanged = true,
+        INP_Default = 0,
+        ICD_Width = 0.5,
+    })
+
+    InCompare = self:AddInput("Compare", "Compare", {
+        LINKID_DataType = "Number",
+        INPID_InputControl = "CheckboxControl",
+        INP_DoNotifyChanged = false,
+        INP_Default = 0,
+        ICD_Width = 0.5,
+    })
+
+    InPreviousFrameAlt = self:AddInput("<- Frame", "PreviousFrameAlt", {
+        LINKID_DataType = "Number",
+        INPID_InputControl = "ButtonControl",
+        INP_DoNotifyChanged = false,
+        ICD_Width = 0.25,
+        BTNC_Align = "Left",
+        BTNCS_Execute = [[
+            comp.CurrentTime = comp.CurrentTime - 1
+        ]],
+    })
+
+    InButtonAddLoopPoint = self:AddInput("Loop", "ButtonAddLoopPoint", {
+        LINKID_DataType = "Number",
+        INPID_InputControl = "ButtonControl",
+        INP_DoNotifyChanged = true,
+        ICD_Width = 0.25,
+        BTNC_Align = "Left",
+        BTNCS_Execute = [[
+            -- Function to make sure things are in order
+            function InsertInOrder(insertTable, value)
+                for i=1, #insertTable do
+                    if tonumber(insertTable[i]) >= tonumber(value) then
+                        table.insert(insertTable, i, value)
+                        break
+                    end
+                end
+                if #insertTable == 0 or tonumber(insertTable[#insertTable]) <= tonumber(value) then
+                    table.insert(insertTable, #insertTable + 1, value)
+                end
+                return insertTable
+            end
+
+            local addTimeString = tool.AddTime[TIME_UNDEFINED]
+            local addTime = {}
+            local theCurrentTime = comp.CurrentTime
+
+            -- Checks to see if the current time is already added and builds a table of the currently added times
+            if addTimeString ~= "Example, add at frames 0, 1, 2:\n{0,1,2}" then
+                for tableValue in string.gmatch(addTimeString, "([%w%d%.]+)") do
+                    InsertInOrder(addTime, tableValue)
+                    if tonumber(theCurrentTime) == tonumber(tableValue) then
+                        print("Already In AddTime")
+                        return
+                    end
+                end
+                for tableValue in string.gmatch(tool.CurrentTimes[TIME_UNDEFINED], "([%w%d%.]+)") do
+                    if tonumber(theCurrentTime) == tonumber(tableValue) then
+                        print("Already In CurrentTimes")
+                        return
+                    end
+                end
+            else
+                tool.AddTime = ""
+            end
+
+            -- Add the current time to the table, rebuild the string, then insert it into the control.
+            InsertInOrder(addTime, theCurrentTime)
+            addTimeString = "{"
+            for _, item in pairs(addTime) do
+                addTimeString = addTimeString .. item .. ","
+            end
+            addTimeString = addTimeString .. "}"
+
+            tool.AddTime = addTimeString
+        ]],
+    })
+
+    InButtonAddScenePoint = self:AddInput("Scene", "ButtonAddScenePoint", {
+        LINKID_DataType = "Number",
+        INPID_InputControl = "ButtonControl",
+        INP_DoNotifyChanged = true,
+        ICD_Width = 0.25,
+        BTNC_Align = "Left",
+        BTNCS_Execute = [[
+            -- Function to make sure things are in order
+            function InsertInOrder(insertTable, value)
+                for i=1, #insertTable do
+                    if tonumber(insertTable[i]) >= tonumber(value) then
+                        table.insert(insertTable, i, value)
+                        break
+                    end
+                end
+                if #insertTable == 0 or tonumber(insertTable[#insertTable]) <= tonumber(value) then
+                    table.insert(insertTable, #insertTable + 1, value)
+                end
+                return insertTable
+            end
+
+            local addTimeString = tool.AddTime[TIME_UNDEFINED]
+            local addTime = {}
+            local theCurrentTime = comp.CurrentTime
+
+            -- Checks to see if the current time is already added and builds a table of the currently added times
+            if addTimeString ~= "Example, add at frames 0, 1, 2:\n{0,1,2}" then
+                for tableValue in string.gmatch(addTimeString, "([%w%d%.]+)") do
+                    InsertInOrder(addTime, tableValue)
+                    if tonumber(theCurrentTime) == tonumber(tableValue) then
+                        print("Already In AddTime")
+                        return
+                    end
+                end
+                for tableValue in string.gmatch(tool.CurrentTimes[TIME_UNDEFINED], "([%w%d%.]+)") do
+                    if tonumber(theCurrentTime) == tonumber(tableValue) then
+                        print("Already In CurrentTimes")
+                        return
+                    end
+                end
+            else
+                tool.AddTime = ""
+            end
+
+            -- Add the current time to the table, rebuild the string, then insert it into the control.
+            InsertInOrder(addTime, theCurrentTime)
+            addTimeString = "{"
+            for _, item in pairs(addTime) do
+                addTimeString = addTimeString .. item .. ","
+            end
+            addTimeString = addTimeString .. "}"
+
+            tool.AddTime = addTimeString
+        ]],
+    })
+
+    InNextFrameAlt = self:AddInput("Frame ->", "NextFrameAlt", {
+        LINKID_DataType = "Number",
+        INPID_InputControl = "ButtonControl",
+        INP_DoNotifyChanged = false,
+        ICD_Width = 0.25,
+        BTNC_Align = "Right",
+        BTNCS_Execute = [[
+            comp.CurrentTime = comp.CurrentTime + 1
+        ]],
+    })
+
 --- @UI Animation Loop Points
 -- You put each point of an animation where you'd want to be able to loop. Allows for more than 1 loop to be input.
     InAnimationPoints = self:AddInput("Loop Points", "AnimationPoints", {
@@ -44,6 +194,126 @@ function Create()
         INP_DoNotifyChanged = true,
         TEC_ReadOnly = false,
         TEC_DeferSetInputs = true,
+    })
+
+    InContext = self:AddInput("Context", "Context", {
+        LINKID_DataType = "Text",
+        INPID_InputControl = "TextEditControl",
+        INPS_DefaultText = "Loop Num: 1, Scene Num: 1",
+        INP_DoNotifyChanged = true,
+        TEC_ReadOnly = true,
+        TEC_Lines = 1,
+        TEC_DeferSetInputs = true,
+    })
+
+    InPreviousLoopPoint = self:AddInput("<- LoopPoint", "PreviousLoopPoint", {
+        LINKID_DataType = "Number",
+        INPID_InputControl = "ButtonControl",
+        ICD_Width = 0.33,
+        BTNC_Align = "Left",
+        BTNCS_Execute = [[
+            currentTimesString = tool.CurrentTimes[TIME_UNDEFINED]
+            currentTimesTable = {}
+
+            for tableValue in string.gmatch(currentTimesString, "([%w%d%.]+)") do
+                table.insert(currentTimesTable, tableValue)
+            end
+
+            for index, item in ipairs(currentTimesTable) do
+                if tonumber(item) >= tonumber(comp.CurrentTime) then
+                    if currentTimesTable[index - 1] ~= nil then
+                        comp.CurrentTime = tonumber(currentTimesTable[index - 1])
+                    end
+                    return
+                end
+            end
+
+            comp.CurrentTime = tonumber(currentTimesTable[#currentTimesTable])
+        ]],
+    })
+
+    InButtonRemoveLoopPoint = self:AddInput("Remove", "ButtonRemoveLoopPoint", {
+        LINKID_DataType = "Number",
+        INPID_InputControl = "ButtonControl",
+        ICD_Width = 0.33,
+        BTNC_Align = "Center",
+        BTNCS_Execute = [[
+            -- Function to make sure things are in order
+            function InsertInOrder(insertTable, value)
+                for i=1, #insertTable do
+                    if tonumber(insertTable[i]) >= tonumber(value) then
+                        table.insert(insertTable, i, value)
+                        break
+                    end
+                end
+                if #insertTable == 0 or tonumber(insertTable[#insertTable]) <= tonumber(value) then
+                    table.insert(insertTable, #insertTable + 1, value)
+                end
+                return insertTable
+            end
+
+            local removeTimeString = tool.RemoveTime[TIME_UNDEFINED]
+            local removeTime = {}
+            local addTimeString = tool.AddTime[TIME_UNDEFINED]
+            local theCurrentTime = comp.CurrentTime
+
+            -- Checks to see if the current time is removable and builds a table of the currently removed times
+            if removeTimeString == "Example, remove at frames 0, 1, 2:\n{0,1,2}" then
+                removeTimeString = ""
+            end
+
+            local removable = false
+            for tableValue in string.gmatch(addTimeString, "([%w%d%.]+)") do
+                if tonumber(theCurrentTime) == tonumber(tableValue) then
+                    removable = true
+                end
+            end
+            for tableValue in string.gmatch(tool.CurrentTimes[TIME_UNDEFINED], "([%w%d%.]+)") do
+                if tonumber(theCurrentTime) == tonumber(tableValue) then
+                    removable = true
+                end
+            end
+            for tableValue in string.gmatch(removeTimeString, "([%w%d%.]+)") do
+                InsertInOrder(removeTime, tableValue)
+                if tonumber(theCurrentTime) == tonumber(tableValue) then
+                    print("Already In RemoveTime")
+                    return
+                end
+            end
+            if removable == false then return end
+
+            -- Add the current time to the table, rebuild the string, then insert it into the control.
+            InsertInOrder(removeTime, theCurrentTime)
+            removeTimeString = "{"
+            for _, item in pairs(removeTime) do
+                removeTimeString = removeTimeString .. item .. ","
+            end
+            removeTimeString = removeTimeString .. "}"
+
+            tool.RemoveTime = removeTimeString
+        ]],
+    })
+
+    InNextLoopPoint = self:AddInput("LoopPoint ->", "NextLoopPoint", {
+        LINKID_DataType = "Number",
+        INPID_InputControl = "ButtonControl",
+        ICD_Width = 0.33,
+        BTNC_Align = "Right",
+        BTNCS_Execute = [[
+            currentTimesString = tool.CurrentTimes[TIME_UNDEFINED]
+            currentTimesTable = {}
+
+            for tableValue in string.gmatch(currentTimesString, "([%w%d%.]+)") do
+                table.insert(currentTimesTable, tableValue)
+            end
+
+            for index, item in ipairs(currentTimesTable) do
+                if tonumber(item) > tonumber(comp.CurrentTime) then
+                    comp.CurrentTime = tonumber(currentTimesTable[index])
+                    return
+                end
+            end
+        ]],
     })
 
     InUseLoopSlider = self:AddInput("Use Loop Point Slider", "UseLoopSlider", {
@@ -60,6 +330,15 @@ function Create()
         INP_MinScale = 1,
         INP_MaxScale = 1,
         INP_DoNotifyChanged = false,
+    })
+
+    InSceneNum = self:AddInput("Scene Number", "SceneNum", {
+        INPID_InputControl = "SliderControl",
+        INP_Default = 1,
+        INP_Integer = true,
+        INP_MinScale = 1,
+        INP_MaxScale = 1,
+        INP_DoNotifyChanged = true,
     })
 
 --- @UI Merge Apply Mode:
@@ -143,7 +422,7 @@ function Create()
         print("ProjectFrameRate ", projectFrameRate, " projectLength ", projectLength, " itemLength ", itemlength, " itemStart ", itemStart, " TrackStart ", itemStart - startTimeCodeSeconds * projectFrameRate)
         tool.FrameRate = projectFrameRate
         tool.TrackLength = itemlength
-        tool.TrackStart = itemStart - startTimeCodeSeconds * projectFrameRate
+        --tool.TrackStart = itemStart - startTimeCodeSeconds * projectFrameRate
         ]],
     })
 
@@ -171,7 +450,7 @@ function Create()
     })
 
 -- WARNING: Not working properly, behavior may break in a future update
-    InTrackStart = self:AddInput("Track Start (Frames)", "TrackStart", {
+    InTrackStart = self:AddInput("Audio Start (Frames)", "TrackStart", {
         LINKID_DataType = "Number",
         INPID_InputControl = "ScrewControl",
         INP_DoNotifyChanged = true,
@@ -423,7 +702,86 @@ function Create()
         INPS_DefaultText = "Example, add at frames 0, 1, 2:\n{0,1,2}",
         INP_DoNotifyChanged = true,
         TEC_ReadOnly = false,
+        TEC_Lines = 3,
         TEC_DeferSetInputs = true,
+    })
+
+    InPreviousFrame = self:AddInput("<- Frame", "PreviousFrame", {
+        LINKID_DataType = "Number",
+        INPID_InputControl = "ButtonControl",
+        INP_DoNotifyChanged = false,
+        ICD_Width = 0.33,
+        BTNC_Align = "Left",
+        BTNCS_Execute = [[
+            comp.CurrentTime = comp.CurrentTime - 1
+        ]],
+    })
+
+    InButtonAddTime = self:AddInput("Add", "ButtonAddTime", {
+        LINKID_DataType = "Number",
+        INPID_InputControl = "ButtonControl",
+        INP_DoNotifyChanged = true,
+        ICD_Width = 0.33,
+        BTNC_Align = "Center",
+        BTNCS_Execute = [[
+            -- Function to make sure things are in order
+            function InsertInOrder(insertTable, value)
+                for i=1, #insertTable do
+                    if tonumber(insertTable[i]) >= tonumber(value) then
+                        table.insert(insertTable, i, value)
+                        break
+                    end
+                end
+                if #insertTable == 0 or tonumber(insertTable[#insertTable]) <= tonumber(value) then
+                    table.insert(insertTable, #insertTable + 1, value)
+                end
+                return insertTable
+            end
+
+            local addTimeString = tool.AddTime[TIME_UNDEFINED]
+            local addTime = {}
+            local theCurrentTime = comp.CurrentTime
+
+            -- Checks to see if the current time is already added and builds a table of the currently added times
+            if addTimeString ~= "Example, add at frames 0, 1, 2:\n{0,1,2}" then
+                for tableValue in string.gmatch(addTimeString, "([%w%d%.]+)") do
+                    InsertInOrder(addTime, tableValue)
+                    if tonumber(theCurrentTime) == tonumber(tableValue) then
+                        print("Already In AddTime")
+                        return
+                    end
+                end
+                for tableValue in string.gmatch(tool.CurrentTimes[TIME_UNDEFINED], "([%w%d%.]+)") do
+                    if tonumber(theCurrentTime) == tonumber(tableValue) then
+                        print("Already In CurrentTimes")
+                        return
+                    end
+                end
+            else
+                tool.AddTime = ""
+            end
+
+            -- Add the current time to the table, rebuild the string, then insert it into the control.
+            InsertInOrder(addTime, theCurrentTime)
+            addTimeString = "{"
+            for _, item in pairs(addTime) do
+                addTimeString = addTimeString .. item .. ","
+            end
+            addTimeString = addTimeString .. "}"
+
+            tool.AddTime = addTimeString
+        ]],
+    })
+
+    InNextFrame = self:AddInput("Frame ->", "NextFrame", {
+        LINKID_DataType = "Number",
+        INPID_InputControl = "ButtonControl",
+        INP_DoNotifyChanged = false,
+        ICD_Width = 0.33,
+        BTNC_Align = "Right",
+        BTNCS_Execute = [[
+            comp.CurrentTime = comp.CurrentTime + 1
+        ]],
     })
 
 --- @UI Remove Wav:
@@ -436,8 +794,132 @@ function Create()
         INPS_DefaultText = "Example, remove at frames 0, 1, 2:\n{0,1,2}",
         INP_DoNotifyChanged = true,
         TEC_ReadOnly = false,
+        TEC_Lines = 3,
         TEC_DeferSetInputs = true,
     })
+
+    InPreviousTime = self:AddInput("<- Time", "PreviousTime", {
+        LINKID_DataType = "Number",
+        INPID_InputControl = "ButtonControl",
+        ICD_Width = 0.33,
+        BTNC_Align = "Left",
+        BTNCS_Execute = [[
+            currentTimesString = tool.CurrentTimes[TIME_UNDEFINED]
+            currentTimesTable = {}
+
+            for tableValue in string.gmatch(currentTimesString, "([%w%d%.]+)") do
+                table.insert(currentTimesTable, tableValue)
+            end
+
+            for index, item in ipairs(currentTimesTable) do
+                if tonumber(item) >= tonumber(comp.CurrentTime) then
+                    if currentTimesTable[index - 1] ~= nil then
+                        comp.CurrentTime = tonumber(currentTimesTable[index - 1])
+                    end
+                    return
+                end
+            end
+
+            comp.CurrentTime = tonumber(currentTimesTable[#currentTimesTable])
+        ]],
+    })
+
+    InButtonRemoveTime = self:AddInput("Remove", "ButtonRemoveTime", {
+        LINKID_DataType = "Number",
+        INPID_InputControl = "ButtonControl",
+        ICD_Width = 0.33,
+        BTNC_Align = "Center",
+        BTNCS_Execute = [[
+            -- Function to make sure things are in order
+            function InsertInOrder(insertTable, value)
+                for i=1, #insertTable do
+                    if tonumber(insertTable[i]) >= tonumber(value) then
+                        table.insert(insertTable, i, value)
+                        break
+                    end
+                end
+                if #insertTable == 0 or tonumber(insertTable[#insertTable]) <= tonumber(value) then
+                    table.insert(insertTable, #insertTable + 1, value)
+                end
+                return insertTable
+            end
+
+            local removeTimeString = tool.RemoveTime[TIME_UNDEFINED]
+            local removeTime = {}
+            local addTimeString = tool.AddTime[TIME_UNDEFINED]
+            local theCurrentTime = comp.CurrentTime
+
+            -- Checks to see if the current time is removable and builds a table of the currently removed times
+            if removeTimeString == "Example, remove at frames 0, 1, 2:\n{0,1,2}" then
+                removeTimeString = ""
+            end
+
+            local removable = false
+            for tableValue in string.gmatch(addTimeString, "([%w%d%.]+)") do
+                if tonumber(theCurrentTime) == tonumber(tableValue) then
+                    removable = true
+                end
+            end
+            for tableValue in string.gmatch(tool.CurrentTimes[TIME_UNDEFINED], "([%w%d%.]+)") do
+                if tonumber(theCurrentTime) == tonumber(tableValue) then
+                    removable = true
+                end
+            end
+            for tableValue in string.gmatch(removeTimeString, "([%w%d%.]+)") do
+                InsertInOrder(removeTime, tableValue)
+                if tonumber(theCurrentTime) == tonumber(tableValue) then
+                    print("Already In RemoveTime")
+                    return
+                end
+            end
+            if removable == false then return end
+
+            -- Add the current time to the table, rebuild the string, then insert it into the control.
+            InsertInOrder(removeTime, theCurrentTime)
+            removeTimeString = "{"
+            for _, item in pairs(removeTime) do
+                removeTimeString = removeTimeString .. item .. ","
+            end
+            removeTimeString = removeTimeString .. "}"
+
+            tool.RemoveTime = removeTimeString
+        ]],
+    })
+
+    InNextTime = self:AddInput("Time ->", "NextTime", {
+        LINKID_DataType = "Number",
+        INPID_InputControl = "ButtonControl",
+        ICD_Width = 0.33,
+        BTNC_Align = "Right",
+        BTNCS_Execute = [[
+            currentTimesString = tool.CurrentTimes[TIME_UNDEFINED]
+            currentTimesTable = {}
+
+            for tableValue in string.gmatch(currentTimesString, "([%w%d%.]+)") do
+                table.insert(currentTimesTable, tableValue)
+            end
+
+            for index, item in ipairs(currentTimesTable) do
+                if tonumber(item) > tonumber(comp.CurrentTime) then
+                    comp.CurrentTime = tonumber(currentTimesTable[index])
+                    return
+                end
+            end
+        ]],
+    })
+
+    self:BeginControlNest("Current Times", "CurrentTimeNest", false);
+
+    InCurrentTimes = self:AddInput("", "CurrentTimes", {
+        LINKID_DataType = "Text",
+        INPID_InputControl = "TextEditControl",
+        INPS_DefaultText = "",
+        TEC_Lines = 2,
+        INP_DoNotifyChanged = false,
+        TEC_ReadOnly = true,
+    })
+
+    self:EndControlNest()
 
     self:EndControlNest()
 
@@ -451,7 +933,7 @@ function Create()
         INP_DoNotifyChanged = true,
         INP_Integer = false,
         INP_MinScale = 0.0,
-        INP_Default = 1,
+        INP_Default = 5,
     })
 
 --- @UI Disable Rounding:
@@ -566,7 +1048,6 @@ function WavParser(req)
                     beatTimes = InsertInOrder(beatTimes, math.floor(event))
                 end
             end
-            print("-----------------------")
         end
     end
 
@@ -602,19 +1083,22 @@ function WavParser(req)
     beatTimes = dedupBeatTimes
 
     -- Print table values so it's easier to use the "add and remove inputs" control
-    print("-----------------------")
+    beatTimesString = "{"
     for i=1, #beatTimes do
-        print("beat time ", beatTimes[i])
+        beatTimesString = beatTimesString .. beatTimes[i] .. ","
     end
-    print("-----------------------")
+    beatTimesString = beatTimesString .. "}"
+    InCurrentTimes:SetSource(Text(beatTimesString), req.Time)
+
     print("Refreshed Wav")
     return beatTimes
 end
 
 
+
 function textParser(req)
     local animationPoints = {}
-    local wavTimes = {{}}
+    local wavTimes = {{{}}}
     local RawAnimationPoints = InAnimationPoints:GetValue(req).Value
 
     -- Read "Loop Points" text box
@@ -623,7 +1107,7 @@ function textParser(req)
             if tableValue == "_" then
                 table.insert(animationPoints, -1)
             else
-                animationPoints = InsertInOrder(animationPoints, tableValue + 0) -- +0 to turn it into a number instead of a string
+                table.insert(animationPoints, tonumber(tableValue))
             end
         end
         if #animationPoints < 2 then
@@ -631,18 +1115,22 @@ function textParser(req)
             return nil
         end
 
-        -- Assemble a more usable table
+        -- Assemble a more usable table {1,2,3} to {{1,2}{2,3}}
+        local scene = 1
         for _, tableValue in pairs(animationPoints) do
             if tableValue == -1 then
-                wavTimes[#wavTimes][1] = nil
-            elseif wavTimes[#wavTimes][1] == nil then
-                wavTimes[#wavTimes][1] = tableValue
-            elseif wavTimes[#wavTimes][1] ~= nil then
-                wavTimes[#wavTimes][2] = tableValue
-                wavTimes[#wavTimes + 1] = {tableValue}
+                wavTimes[scene + 1] = {{nil}}
+                scene = scene + 1
+            elseif wavTimes[scene][#wavTimes[scene]][1] == nil then
+                wavTimes[scene][#wavTimes[scene]][1] = tableValue
+            elseif wavTimes[scene][#wavTimes[scene]][1] ~= nil then
+                wavTimes[scene][#wavTimes[scene]][2] = tableValue
+                wavTimes[scene][#wavTimes[scene] + 1] = {tableValue}
             end
         end
-        wavTimes[#wavTimes] = nil
+        for scene, _ in pairs(wavTimes) do
+            wavTimes[scene][#wavTimes[scene]] = nil
+        end
     else return nil end
 
     return wavTimes
@@ -655,6 +1143,7 @@ function FindFrame(req, beatTimes, wavTimes)
     local currentFrame = req.Time
     local RemoveRounding = InRemoveVideoRounding:GetValue(req).Value
     local UseLoopSlider = InUseLoopSlider:GetValue(req).Value
+    local scene = InSceneNum:GetValue(req).Value
     local LoopNum = InLoopNum:GetValue(req).Value
     local timingPresets = inTimingPresets:GetValue(req).Value + 1
     local mult = InMultiply:GetValue(req).Value
@@ -670,7 +1159,7 @@ function FindFrame(req, beatTimes, wavTimes)
     else
         for i=2, #beatTimes do
             if currentFrame < beatTimes[i] then
-                loopIndex = math.fmod(i + #wavTimes - 2, #wavTimes) + 1
+                loopIndex = math.fmod(i + #wavTimes[scene] - 2, #wavTimes[scene]) + 1
                 currentBeat = beatTimes[i - 1]
                 nextBeat = beatTimes[i]
                 beatDifference = nextBeat - currentBeat
@@ -690,11 +1179,11 @@ function FindFrame(req, beatTimes, wavTimes)
     local FrameStart = 0
     local FrameEnd = 0
     if UseLoopSlider == 1 then
-        FrameStart = wavTimes[LoopNum][1]
-        FrameEnd = wavTimes[LoopNum][2]
+        FrameStart = wavTimes[scene][LoopNum][1]
+        FrameEnd = wavTimes[scene][LoopNum][2]
     else
-        FrameStart = wavTimes[loopIndex][1]
-        FrameEnd = wavTimes[loopIndex][2]
+        FrameStart = wavTimes[scene][loopIndex][1]
+        FrameEnd = wavTimes[scene][loopIndex][2]
     end
     local frameDifference = FrameEnd - FrameStart
 
@@ -744,6 +1233,8 @@ end
 --- Runs every frame
 function Process(req)
     -- Get UI parameters
+    local Bypass = InBypass:GetValue(req).Value
+    local Compare = InCompare:GetValue(req).Value
     local apply_mode = InApply:GetValue(req).Value + 1
 --     local ManualCache = InFrameCashe:GetValue(req).Value
 
@@ -777,29 +1268,58 @@ function Process(req)
     local out = Image({IMG_NoData = true})  -- pg 79 https://www.steakunderwater.com/VFXPedia/96.0.243.189/index9205.html?title=Eyeon:Script/Reference/Applications/Fuse/Classes/Image/Attributes
     out:Clear()
 
-    local requestedKeyFrame = FindFrame(req, beatTimes, wavTimes)
-    if requestedKeyFrame ~= nil then
-        local tmpImage = InBackground:GetSource(requestedKeyFrame)
-        out:Merge(tmpImage, {
-            MO_ApplyMode = apply_modes[apply_mode],
-            MO_ApplyOperator = "Over",
-            MO_XOffset = 0.5,
-            MO_YOffset = 0.5,
-            MO_XAxis = 0.5,
-            MO_YAxis = 0.5,
-            MO_XSize = 1,
-            MO_YSize = 1,
-            MO_Angle = 0,
-            MO_FgAddSub = 1,
-            MO_BgAddSub = 1,
-            MO_BurnIn = 0,
-            MO_FgRedGain   = 1.0,
-            MO_FgGreenGain = 1.0,
-            MO_FgBlueGain  = 1.0,
-            MO_FgAlphaGain = 1,
-            MO_Invert = 1,
-            MO_DoZ = false,
-        })
+    if Bypass == 1 then
+        if Compare == 1 then
+            local tmpImage = InBackground:GetSource(1)
+            out = InBackground:GetSource(req.Time)
+            out:Merge(tmpImage, {
+                MO_ApplyMode = "Difference",
+                MO_ApplyOperator = "Over",
+                MO_XOffset = 0.5,
+                MO_YOffset = 0.5,
+                MO_XAxis = 0.5,
+                MO_YAxis = 0.5,
+                MO_XSize = 1,
+                MO_YSize = 1,
+                MO_Angle = 0,
+                MO_FgAddSub = 1,
+                MO_BgAddSub = 1,
+                MO_BurnIn = 0,
+                MO_FgRedGain   = 1.0,
+                MO_FgGreenGain = 1.0,
+                MO_FgBlueGain  = 1.0,
+                MO_FgAlphaGain = 1,
+                MO_Invert = 1,
+                MO_DoZ = false,
+            })
+        else
+            out = InBackground:GetSource(req.Time) -- Not the most optimized (GetValue would be better), but that doesnt really matter for a preview
+        end
+    else
+        local requestedKeyFrame = FindFrame(req, beatTimes, wavTimes)
+        if requestedKeyFrame ~= nil then
+            local tmpImage = InBackground:GetSource(requestedKeyFrame)
+            out:Merge(tmpImage, {
+                MO_ApplyMode = apply_modes[apply_mode],
+                MO_ApplyOperator = "Over",
+                MO_XOffset = 0.5,
+                MO_YOffset = 0.5,
+                MO_XAxis = 0.5,
+                MO_YAxis = 0.5,
+                MO_XSize = 1,
+                MO_YSize = 1,
+                MO_Angle = 0,
+                MO_FgAddSub = 1,
+                MO_BgAddSub = 1,
+                MO_BurnIn = 0,
+                MO_FgRedGain   = 1.0,
+                MO_FgGreenGain = 1.0,
+                MO_FgBlueGain  = 1.0,
+                MO_FgAlphaGain = 1,
+                MO_Invert = 1,
+                MO_DoZ = false,
+            })
+        end
     end
 
     OutImage:Set(req, out)
@@ -836,16 +1356,50 @@ function NotifyChanged(inp, param, time)
         InWav:SetAttrs({INP_Default = 1})
     end
 
+    if inp == InBypass then
+        if param.Value == 0 then
+            InCompare:SetSource(Number(0), 0)
+            InCompare:SetAttrs({INP_Disabled = true})
+        else
+            InCompare:SetAttrs({INP_Disabled = false})
+        end
+    end
+
     InTrackLength:SetAttrs({INP_Default = 1}) -- Refreshes frame table and manual cache table
+
+    -- Find the loop number for the scene we're currently on
+    function SetLoopMax(Table, SceneNum)
+        local count = 1
+        SceneCount = 1
+        for tableValue in string.gmatch(Table, "([%d%.%_]+)") do
+            if tableValue == "_" then
+                if SceneCount >= SceneNum then break end
+                SceneCount = SceneCount + 1
+                count = 1
+            else
+                count = count + 1
+            end
+        end
+
+        InLoopNum:SetAttrs({INP_MaxScale = count - 2})
+    end
+
+    if inp == InSceneNum then
+        InLoopNum:SetSource(Number(1), 0)
+
+        SetLoopMax(InAnimationPoints:GetSource(time).Value, param.Value)
+    end
 
     -- updates InLoopNum's max value
     if inp == InAnimationPoints then
-        if param.Value == nil or param.Value == "" then
+        if param.Value == nil or param.Value == "" or param.Value == "Example:\n{1,2,_,3,4}" then
             return
         else
-            local _, count = param.Value:gsub(",","")
-            local _, _count = param.Value:gsub("_","")
-            InLoopNum:SetAttrs({INP_MaxScale = count - _count * 2})
+            local _, SceneCount = param.Value:gsub("_","")
+            InSceneNum:SetAttrs({INP_MaxScale = SceneCount + 1})
+            InSceneNum:SetSource(Number(1), 0)
+
+            SetLoopMax(param.Value, 1)
         end
     end
 
