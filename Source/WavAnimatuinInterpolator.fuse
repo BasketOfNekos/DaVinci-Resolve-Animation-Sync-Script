@@ -69,108 +69,69 @@ function Create()
         ICD_Width = 0.25,
         BTNC_Align = "Left",
         BTNCS_Execute = [[
-            -- Function to make sure things are in order
-            function InsertInOrder(insertTable, value)
-                for i=1, #insertTable do
-                    if tonumber(insertTable[i]) >= tonumber(value) then
-                        table.insert(insertTable, i, value)
-                        break
-                    end
+            local contextString = tool.Context[TIME_UNDEFINED]
+            local contextTimesTable = {}
+
+            -- Convert context text to numbers
+            contextTimesTable[1], contextTimesTable[2], contextTimesTable[3] = string.match(contextString, "Loop Num:%s*(%d+),%s*Scene Num:%s*(%d+)%s*(%+?)%s*$")
+            contextTimesTable[1] = tonumber(contextTimesTable[1])
+            contextTimesTable[2] = tonumber(contextTimesTable[2])
+
+            local loopPoints = tool.AnimationPoints[TIME_UNDEFINED]
+            local loopPointsTable = {{}}
+
+            -- Create loopPointsTable from the string
+            for tableValue in string.gmatch(loopPoints, "([%d%.%\n]+)") do
+                if tableValue == "\n" then
+                    table.insert(loopPointsTable, {nil})
+                else
+                    table.insert(loopPointsTable[#loopPointsTable], tonumber(tableValue))
                 end
-                if #insertTable == 0 or tonumber(insertTable[#insertTable]) <= tonumber(value) then
-                    table.insert(insertTable, #insertTable + 1, value)
-                end
-                return insertTable
+            end
+            if loopPointsTable[#loopPointsTable][1] == nil then
+                loopPointsTable[#loopPointsTable] = nil
             end
 
-            local addTimeString = tool.AddTime[TIME_UNDEFINED]
-            local addTime = {}
-            local theCurrentTime = comp.CurrentTime
-
-            -- Checks to see if the current time is already added and builds a table of the currently added times
-            if addTimeString ~= "Example, add at frames 0, 1, 2:\n{0,1,2}" then
-                for tableValue in string.gmatch(addTimeString, "([%w%d%.]+)") do
-                    InsertInOrder(addTime, tableValue)
-                    if tonumber(theCurrentTime) == tonumber(tableValue) then
-                        print("Already In AddTime")
-                        return
-                    end
-                end
-                for tableValue in string.gmatch(tool.CurrentTimes[TIME_UNDEFINED], "([%w%d%.]+)") do
-                    if tonumber(theCurrentTime) == tonumber(tableValue) then
-                        print("Already In CurrentTimes")
-                        return
-                    end
-                end
+            -- Add current frame to the table
+            if contextTimesTable[3] == "+" then
+                table.insert(loopPointsTable, {comp.CurrentTime})
+                contextTimesTable[1] = 1
+                contextTimesTable[2] = #loopPointsTable
             else
-                tool.AddTime = ""
+                table.insert(loopPointsTable[contextTimesTable[2] ], contextTimesTable[1] + 1, comp.CurrentTime)
+                contextTimesTable[1] = contextTimesTable[1] + 1
             end
 
-            -- Add the current time to the table, rebuild the string, then insert it into the control.
-            InsertInOrder(addTime, theCurrentTime)
-            addTimeString = "{"
-            for _, item in pairs(addTime) do
-                addTimeString = addTimeString .. item .. ","
+            -- Reconstruct string from table
+            contextString = ""
+            for _, scene in pairs(loopPointsTable) do
+                contextString = contextString .. "{"
+                for __, value in pairs(scene) do
+                    contextString = contextString .. value .. ","
+                end
+                contextString = contextString .. "}\n"
             end
-            addTimeString = addTimeString .. "}"
 
-            tool.AddTime = addTimeString
+            tool.AnimationPoints = contextString
+            tool.Context = "Loop Num: " .. contextTimesTable[1] .. ", Scene Num: " .. contextTimesTable[2]
         ]],
     })
 
     InButtonAddScenePoint = self:AddInput("Scene", "ButtonAddScenePoint", {
         LINKID_DataType = "Number",
         INPID_InputControl = "ButtonControl",
-        INP_DoNotifyChanged = true,
+        INP_DoNotifyChanged = false,
         ICD_Width = 0.25,
         BTNC_Align = "Left",
         BTNCS_Execute = [[
-            -- Function to make sure things are in order
-            function InsertInOrder(insertTable, value)
-                for i=1, #insertTable do
-                    if tonumber(insertTable[i]) >= tonumber(value) then
-                        table.insert(insertTable, i, value)
-                        break
-                    end
-                end
-                if #insertTable == 0 or tonumber(insertTable[#insertTable]) <= tonumber(value) then
-                    table.insert(insertTable, #insertTable + 1, value)
-                end
-                return insertTable
-            end
+            local contextTimesTable = {}
+            contextTimesTable[1], contextTimesTable[2], contextTimesTable[3] = string.match(tool.Context[TIME_UNDEFINED], "Loop Num:%s*(%d+),%s*Scene Num:%s*(%d+)%s*(%+?)%s*$")
 
-            local addTimeString = tool.AddTime[TIME_UNDEFINED]
-            local addTime = {}
-            local theCurrentTime = comp.CurrentTime
-
-            -- Checks to see if the current time is already added and builds a table of the currently added times
-            if addTimeString ~= "Example, add at frames 0, 1, 2:\n{0,1,2}" then
-                for tableValue in string.gmatch(addTimeString, "([%w%d%.]+)") do
-                    InsertInOrder(addTime, tableValue)
-                    if tonumber(theCurrentTime) == tonumber(tableValue) then
-                        print("Already In AddTime")
-                        return
-                    end
-                end
-                for tableValue in string.gmatch(tool.CurrentTimes[TIME_UNDEFINED], "([%w%d%.]+)") do
-                    if tonumber(theCurrentTime) == tonumber(tableValue) then
-                        print("Already In CurrentTimes")
-                        return
-                    end
-                end
+            if contextTimesTable[3] == "+" then
+                tool.Context = "Loop Num: " .. contextTimesTable[1] .. ", Scene Num: " .. contextTimesTable[2]
             else
-                tool.AddTime = ""
+                tool.Context = tool.Context[TIME_UNDEFINED] .. " +"
             end
-
-            -- Add the current time to the table, rebuild the string, then insert it into the control.
-            InsertInOrder(addTime, theCurrentTime)
-            addTimeString = "{"
-            for _, item in pairs(addTime) do
-                addTimeString = addTimeString .. item .. ","
-            end
-            addTimeString = addTimeString .. "}"
-
-            tool.AddTime = addTimeString
         ]],
     })
 
@@ -190,13 +151,13 @@ function Create()
     InAnimationPoints = self:AddInput("Loop Points", "AnimationPoints", {
         LINKID_DataType = "Text",
         INPID_InputControl = "TextEditControl",
-        INPS_DefaultText = "Example:\n{1,2,_,3,4}",
+        INPS_DefaultText = "Example:\n{1,2}\n{3,4}",
         INP_DoNotifyChanged = true,
         TEC_ReadOnly = false,
         TEC_DeferSetInputs = true,
     })
 
-    InContext = self:AddInput("Context", "Context", {
+    InContext = self:AddInput("Selection", "Context", {
         LINKID_DataType = "Text",
         INPID_InputControl = "TextEditControl",
         INPS_DefaultText = "Loop Num: 1, Scene Num: 1",
@@ -212,23 +173,43 @@ function Create()
         ICD_Width = 0.33,
         BTNC_Align = "Left",
         BTNCS_Execute = [[
-            currentTimesString = tool.CurrentTimes[TIME_UNDEFINED]
-            currentTimesTable = {}
+            local contextString = tool.Context[TIME_UNDEFINED]
+            local contextTimesTable = {}
 
-            for tableValue in string.gmatch(currentTimesString, "([%w%d%.]+)") do
-                table.insert(currentTimesTable, tableValue)
-            end
+            -- Convert context text to numbers
+            contextTimesTable[1], contextTimesTable[2], contextTimesTable[3] = string.match(contextString, "Loop Num:%s*(%d+),%s*Scene Num:%s*(%d+)%s*(%+?)%s*$")
+            contextTimesTable[1] = tonumber(contextTimesTable[1])
+            contextTimesTable[2] = tonumber(contextTimesTable[2])
 
-            for index, item in ipairs(currentTimesTable) do
-                if tonumber(item) >= tonumber(comp.CurrentTime) then
-                    if currentTimesTable[index - 1] ~= nil then
-                        comp.CurrentTime = tonumber(currentTimesTable[index - 1])
-                    end
-                    return
+            local loopPoints = tool.AnimationPoints[TIME_UNDEFINED]
+            local loopPointsTable = {{}}
+
+            -- Create loopPointsTable from the string
+            for tableValue in string.gmatch(loopPoints, "([%d%.%\n]+)") do
+                if tableValue == "\n" then
+                    table.insert(loopPointsTable, {nil})
+                else
+                    table.insert(loopPointsTable[#loopPointsTable], tonumber(tableValue))
                 end
             end
+            if loopPointsTable[#loopPointsTable][1] == nil then
+                loopPointsTable[#loopPointsTable] = nil
+            end
 
-            comp.CurrentTime = tonumber(currentTimesTable[#currentTimesTable])
+            -- Applies the move to the internal variable
+            if contextTimesTable[1] <= 1 then
+                if contextTimesTable[2] <= 1 then
+                    return
+                else
+                    contextTimesTable[2] = contextTimesTable[2] - 1 -- Scene
+                    contextTimesTable[1] = #loopPointsTable[contextTimesTable[2] ] -- Loop Number
+                end
+            else
+                contextTimesTable[1] = contextTimesTable[1] - 1
+            end
+
+            tool.Context = "Loop Num: " .. contextTimesTable[1] .. ", Scene Num: " .. contextTimesTable[2]
+            comp.CurrentTime = loopPointsTable[contextTimesTable[2] ][contextTimesTable[1] ]
         ]],
     })
 
@@ -238,59 +219,47 @@ function Create()
         ICD_Width = 0.33,
         BTNC_Align = "Center",
         BTNCS_Execute = [[
-            -- Function to make sure things are in order
-            function InsertInOrder(insertTable, value)
-                for i=1, #insertTable do
-                    if tonumber(insertTable[i]) >= tonumber(value) then
-                        table.insert(insertTable, i, value)
-                        break
-                    end
-                end
-                if #insertTable == 0 or tonumber(insertTable[#insertTable]) <= tonumber(value) then
-                    table.insert(insertTable, #insertTable + 1, value)
-                end
-                return insertTable
-            end
+            local contextString = tool.Context[TIME_UNDEFINED]
+            local contextTimesTable = {}
 
-            local removeTimeString = tool.RemoveTime[TIME_UNDEFINED]
-            local removeTime = {}
-            local addTimeString = tool.AddTime[TIME_UNDEFINED]
-            local theCurrentTime = comp.CurrentTime
+            -- Convert context text to numbers
+            contextTimesTable[1], contextTimesTable[2], contextTimesTable[3] = string.match(contextString, "Loop Num:%s*(%d+),%s*Scene Num:%s*(%d+)%s*(%+?)%s*$")
+            contextTimesTable[1] = tonumber(contextTimesTable[1])
+            contextTimesTable[2] = tonumber(contextTimesTable[2])
 
-            -- Checks to see if the current time is removable and builds a table of the currently removed times
-            if removeTimeString == "Example, remove at frames 0, 1, 2:\n{0,1,2}" then
-                removeTimeString = ""
-            end
+            local loopPoints = tool.AnimationPoints[TIME_UNDEFINED]
+            local loopPointsTable = {{}}
 
-            local removable = false
-            for tableValue in string.gmatch(addTimeString, "([%w%d%.]+)") do
-                if tonumber(theCurrentTime) == tonumber(tableValue) then
-                    removable = true
+            -- Create loopPointsTable from the string
+            for tableValue in string.gmatch(loopPoints, "([%d%.%\n]+)") do
+                if tableValue == "\n" then
+                    table.insert(loopPointsTable, {nil})
+                else
+                    table.insert(loopPointsTable[#loopPointsTable], tonumber(tableValue))
                 end
             end
-            for tableValue in string.gmatch(tool.CurrentTimes[TIME_UNDEFINED], "([%w%d%.]+)") do
-                if tonumber(theCurrentTime) == tonumber(tableValue) then
-                    removable = true
-                end
+            if loopPointsTable[#loopPointsTable][1] == nil then
+                loopPointsTable[#loopPointsTable] = nil
             end
-            for tableValue in string.gmatch(removeTimeString, "([%w%d%.]+)") do
-                InsertInOrder(removeTime, tableValue)
-                if tonumber(theCurrentTime) == tonumber(tableValue) then
-                    print("Already In RemoveTime")
-                    return
-                end
-            end
-            if removable == false then return end
 
-            -- Add the current time to the table, rebuild the string, then insert it into the control.
-            InsertInOrder(removeTime, theCurrentTime)
-            removeTimeString = "{"
-            for _, item in pairs(removeTime) do
-                removeTimeString = removeTimeString .. item .. ","
+            -- Remove from table
+            table.remove(loopPointsTable[contextTimesTable[2] ], contextTimesTable[1])
+            if contextTimesTable[1] > 1 then
+                contextTimesTable[1] = contextTimesTable[1] - 1
             end
-            removeTimeString = removeTimeString .. "}"
 
-            tool.RemoveTime = removeTimeString
+            -- Reconstruct string from table
+            contextString = ""
+            for _, scene in pairs(loopPointsTable) do
+                contextString = contextString .. "{"
+                for __, value in pairs(scene) do
+                    contextString = contextString .. value .. ","
+                end
+                contextString = contextString .. "}\n"
+            end
+
+            tool.AnimationPoints = contextString
+            tool.Context = "Loop Num: " .. contextTimesTable[1] .. ", Scene Num: " .. contextTimesTable[2]
         ]],
     })
 
@@ -300,19 +269,125 @@ function Create()
         ICD_Width = 0.33,
         BTNC_Align = "Right",
         BTNCS_Execute = [[
-            currentTimesString = tool.CurrentTimes[TIME_UNDEFINED]
-            currentTimesTable = {}
+            local contextString = tool.Context[TIME_UNDEFINED]
+            local contextTimesTable = {}
 
-            for tableValue in string.gmatch(currentTimesString, "([%w%d%.]+)") do
-                table.insert(currentTimesTable, tableValue)
-            end
+            -- Convert context text to numbers
+            contextTimesTable[1], contextTimesTable[2], contextTimesTable[3] = string.match(contextString, "Loop Num:%s*(%d+),%s*Scene Num:%s*(%d+)%s*(%+?)%s*$")
+            contextTimesTable[1] = tonumber(contextTimesTable[1])
+            contextTimesTable[2] = tonumber(contextTimesTable[2])
 
-            for index, item in ipairs(currentTimesTable) do
-                if tonumber(item) > tonumber(comp.CurrentTime) then
-                    comp.CurrentTime = tonumber(currentTimesTable[index])
-                    return
+            local loopPoints = tool.AnimationPoints[TIME_UNDEFINED]
+            local loopPointsTable = {{}}
+
+            -- Create loopPointsTable from the string
+            for tableValue in string.gmatch(loopPoints, "([%d%.%\n]+)") do
+                if tableValue == "\n" then
+                    table.insert(loopPointsTable, {nil})
+                else
+                    table.insert(loopPointsTable[#loopPointsTable], tonumber(tableValue))
                 end
             end
+            if loopPointsTable[#loopPointsTable][1] == nil then
+                loopPointsTable[#loopPointsTable] = nil
+            end
+
+            -- Applies the move to the internal variable
+            if contextTimesTable[1] >= #loopPointsTable[contextTimesTable[2] ] then
+                if contextTimesTable[2] >= #loopPointsTable then
+                    return
+                else
+                    contextTimesTable[2] = contextTimesTable[2] + 1 -- Scene
+                    contextTimesTable[1] = 1 -- Loop Number
+                end
+            else
+                contextTimesTable[1] = contextTimesTable[1] + 1
+            end
+
+            tool.Context = "Loop Num: " .. contextTimesTable[1] .. ", Scene Num: " .. contextTimesTable[2]
+            comp.CurrentTime = loopPointsTable[contextTimesTable[2] ][contextTimesTable[1] ]
+        ]],
+    })
+
+    InPreviousScene = self:AddInput("<- Scene", "PreviousScene", {
+        LINKID_DataType = "Number",
+        INPID_InputControl = "ButtonControl",
+        ICD_Width = 0.5,
+        BTNC_Align = "Right",
+        BTNCS_Execute = [[
+            local contextString = tool.Context[TIME_UNDEFINED]
+            local contextTimesTable = {}
+
+            -- Convert context text to numbers
+            contextTimesTable[1], contextTimesTable[2], contextTimesTable[3] = string.match(contextString, "Loop Num:%s*(%d+),%s*Scene Num:%s*(%d+)%s*(%+?)%s*$")
+            contextTimesTable[1] = tonumber(contextTimesTable[1])
+            contextTimesTable[2] = tonumber(contextTimesTable[2])
+
+            local loopPoints = tool.AnimationPoints[TIME_UNDEFINED]
+            local loopPointsTable = {{}}
+
+            -- Create loopPointsTable from the string
+            for tableValue in string.gmatch(loopPoints, "([%d%.%\n]+)") do
+                if tableValue == "\n" then
+                    table.insert(loopPointsTable, {nil})
+                else
+                    table.insert(loopPointsTable[#loopPointsTable], tonumber(tableValue))
+                end
+            end
+            if loopPointsTable[#loopPointsTable][1] == nil then
+                loopPointsTable[#loopPointsTable] = nil
+            end
+
+            -- Apply the move
+            if contextTimesTable[2] <= 1 then
+                return
+            else
+                contextTimesTable[2] = contextTimesTable[2] - 1
+            end
+
+            tool.Context = "Loop Num: " .. 1 .. ", Scene Num: " .. contextTimesTable[2]
+            comp.CurrentTime = loopPointsTable[contextTimesTable[2] ][1 ]
+        ]],
+    })
+
+    InNextScene = self:AddInput("Scene ->", "NextScene", {
+        LINKID_DataType = "Number",
+        INPID_InputControl = "ButtonControl",
+        ICD_Width = 0.5,
+        BTNC_Align = "Right",
+        BTNCS_Execute = [[
+            local contextString = tool.Context[TIME_UNDEFINED]
+            local contextTimesTable = {}
+
+            -- Convert context text to numbers
+            contextTimesTable[1], contextTimesTable[2], contextTimesTable[3] = string.match(contextString, "Loop Num:%s*(%d+),%s*Scene Num:%s*(%d+)%s*(%+?)%s*$")
+            contextTimesTable[1] = tonumber(contextTimesTable[1])
+            contextTimesTable[2] = tonumber(contextTimesTable[2])
+
+            local loopPoints = tool.AnimationPoints[TIME_UNDEFINED]
+            local loopPointsTable = {{}}
+
+            -- Create loopPointsTable from the string
+            for tableValue in string.gmatch(loopPoints, "([%d%.%\n]+)") do
+                if tableValue == "\n" then
+                    table.insert(loopPointsTable, {nil})
+                else
+                    table.insert(loopPointsTable[#loopPointsTable], tonumber(tableValue))
+                end
+            end
+            if loopPointsTable[#loopPointsTable][1] == nil then
+                loopPointsTable[#loopPointsTable] = nil
+            end
+
+            -- Apply the move
+            if contextTimesTable[2] >= #loopPointsTable then
+                return
+            else
+                contextTimesTable[2] = contextTimesTable[2] + 1
+            end
+
+            tool.Context = "Loop Num: " .. 1 .. ", Scene Num: " .. contextTimesTable[2]
+            comp.CurrentTime = loopPointsTable[contextTimesTable[2] ][1 ]
         ]],
     })
 
@@ -1102,9 +1177,9 @@ function textParser(req)
     local RawAnimationPoints = InAnimationPoints:GetValue(req).Value
 
     -- Read "Loop Points" text box
-    if RawAnimationPoints ~= "" and RawAnimationPoints ~= "Example:\n{1,2,_,3,4}" then
-        for tableValue in string.gmatch(RawAnimationPoints, "([%d%.%_]+)") do
-            if tableValue == "_" then
+    if RawAnimationPoints ~= "" and RawAnimationPoints ~= "Example:\n{1,2}\n{3,4}" then
+        for tableValue in string.gmatch(RawAnimationPoints, "([%d%.%\n]+)") do
+            if tableValue == "\n" then
                 table.insert(animationPoints, -1)
             else
                 table.insert(animationPoints, tonumber(tableValue))
@@ -1270,8 +1345,52 @@ function Process(req)
 
     if Bypass == 1 then
         if Compare == 1 then
-            local tmpImage = InBackground:GetSource(1)
-            out = InBackground:GetSource(req.Time)
+            local contextString = InContext:GetValue(req).Value
+            local contextTimesTable = {}
+
+            -- Convert context text to numbers
+            contextTimesTable[1], contextTimesTable[2], contextTimesTable[3] = string.match(contextString, "Loop Num:%s*(%d+),%s*Scene Num:%s*(%d+)%s*(%+?)%s*$")
+            contextTimesTable[1] = tonumber(contextTimesTable[1])
+            contextTimesTable[2] = tonumber(contextTimesTable[2])
+
+            local loopPoints = InAnimationPoints:GetValue(req).Value
+            local loopPointsTable = {{}}
+
+            -- Create loopPointsTable from the string
+            for tableValue in string.gmatch(loopPoints, "([%d%.%\n]+)") do
+                if tableValue == "\n" then
+                    table.insert(loopPointsTable, {nil})
+                else
+                    table.insert(loopPointsTable[#loopPointsTable], tonumber(tableValue))
+                end
+            end
+            if loopPointsTable[#loopPointsTable][1] == nil then
+                loopPointsTable[#loopPointsTable] = nil
+            end
+
+            local tmpImage = InBackground:GetSource(loopPointsTable[contextTimesTable[2]][contextTimesTable[1]])
+            out:Merge(tmpImage, {
+                MO_ApplyMode = "Merge",
+                MO_ApplyOperator = "Over",
+                MO_XOffset = 0.5,
+                MO_YOffset = 0.5,
+                MO_XAxis = 0.5,
+                MO_YAxis = 0.5,
+                MO_XSize = 1,
+                MO_YSize = 1,
+                MO_Angle = 0,
+                MO_FgAddSub = 1,
+                MO_BgAddSub = 1,
+                MO_BurnIn = 0,
+                MO_FgRedGain   = 1.0,
+                MO_FgGreenGain = 1.0,
+                MO_FgBlueGain  = 1.0,
+                MO_FgAlphaGain = 1,
+                MO_Invert = 1,
+                MO_DoZ = false,
+            })
+
+            tmpImage = InBackground:GetSource(req.Time)
             out:Merge(tmpImage, {
                 MO_ApplyMode = "Difference",
                 MO_ApplyOperator = "Over",
@@ -1369,19 +1488,21 @@ function NotifyChanged(inp, param, time)
 
     -- Find the loop number for the scene we're currently on
     function SetLoopMax(Table, SceneNum)
-        local count = 1
-        SceneCount = 1
-        for tableValue in string.gmatch(Table, "([%d%.%_]+)") do
-            if tableValue == "_" then
-                if SceneCount >= SceneNum then break end
-                SceneCount = SceneCount + 1
-                count = 1
+        local loopPointsTable = {{}}
+
+        -- Create loopPointsTable from the string
+        for tableValue in string.gmatch(Table, "([%d%.%\n]+)") do
+            if tableValue == "\n" then
+                table.insert(loopPointsTable, {nil})
             else
-                count = count + 1
+                table.insert(loopPointsTable[#loopPointsTable], tonumber(tableValue))
             end
         end
+        if loopPointsTable[#loopPointsTable][1] == nil then
+            loopPointsTable[#loopPointsTable] = nil
+        end
 
-        InLoopNum:SetAttrs({INP_MaxScale = count - 2})
+        InLoopNum:SetAttrs({INP_MaxScale = #loopPointsTable[SceneNum] - 1})
     end
 
     if inp == InSceneNum then
@@ -1392,10 +1513,11 @@ function NotifyChanged(inp, param, time)
 
     -- updates InLoopNum's max value
     if inp == InAnimationPoints then
-        if param.Value == nil or param.Value == "" or param.Value == "Example:\n{1,2,_,3,4}" then
+        InContext:SetSource(Text("Loop Num: 1, Scene Num: 1"), 0)
+        if param.Value == nil or param.Value == "" or param.Value == "Example:\n{1,2}\n{3,4}" then
             return
         else
-            local _, SceneCount = param.Value:gsub("_","")
+            local _, SceneCount = param.Value:gsub("\n","")
             InSceneNum:SetAttrs({INP_MaxScale = SceneCount + 1})
             InSceneNum:SetSource(Number(1), 0)
 
