@@ -73,12 +73,17 @@ function Create()
             local contextTimesTable = {}
 
             -- Convert context text to numbers
-            contextTimesTable[1], contextTimesTable[2], contextTimesTable[3] = string.match(contextString, "Loop Num:%s*(%d+),%s*Scene Num:%s*(%d+)%s*(%+?)%s*$")
+            contextTimesTable[1], contextTimesTable[2] = string.match(contextString, "Loop Num:%s*(%d+),%s*Scene Num:%s*(%d+)$")
             contextTimesTable[1] = tonumber(contextTimesTable[1])
             contextTimesTable[2] = tonumber(contextTimesTable[2])
 
             local loopPoints = tool.AnimationPoints[TIME_UNDEFINED]
             local loopPointsTable = {{}}
+
+            if loopPoints == "Example:\n{1,2}\n{3,4}" then
+                tool.AnimationPoints = "{" .. comp.CurrentTime .. "}"
+                return
+            end
 
             -- Create loopPointsTable from the string
             for tableValue in string.gmatch(loopPoints, "([%d%.%\n]+)") do
@@ -93,14 +98,9 @@ function Create()
             end
 
             -- Add current frame to the table
-            if contextTimesTable[3] == "+" then
-                table.insert(loopPointsTable, {comp.CurrentTime})
-                contextTimesTable[1] = 1
-                contextTimesTable[2] = #loopPointsTable
-            else
-                table.insert(loopPointsTable[contextTimesTable[2] ], contextTimesTable[1] + 1, comp.CurrentTime)
-                contextTimesTable[1] = contextTimesTable[1] + 1
-            end
+            table.insert(loopPointsTable[contextTimesTable[2] ], contextTimesTable[1] + 1, comp.CurrentTime)
+            contextTimesTable[1] = contextTimesTable[1] + 1
+
 
             -- Reconstruct string from table
             contextString = ""
@@ -124,14 +124,51 @@ function Create()
         ICD_Width = 0.25,
         BTNC_Align = "Left",
         BTNCS_Execute = [[
+            local contextString = tool.Context[TIME_UNDEFINED]
             local contextTimesTable = {}
-            contextTimesTable[1], contextTimesTable[2], contextTimesTable[3] = string.match(tool.Context[TIME_UNDEFINED], "Loop Num:%s*(%d+),%s*Scene Num:%s*(%d+)%s*(%+?)%s*$")
 
-            if contextTimesTable[3] == "+" then
-                tool.Context = "Loop Num: " .. contextTimesTable[1] .. ", Scene Num: " .. contextTimesTable[2]
-            else
-                tool.Context = tool.Context[TIME_UNDEFINED] .. " +"
+            -- Convert context text to numbers
+            contextTimesTable[1], contextTimesTable[2] = string.match(contextString, "Loop Num:%s*(%d+),%s*Scene Num:%s*(%d+)$")
+            contextTimesTable[1] = tonumber(contextTimesTable[1])
+            contextTimesTable[2] = tonumber(contextTimesTable[2])
+
+            local loopPoints = tool.AnimationPoints[TIME_UNDEFINED]
+            local loopPointsTable = {{}}
+
+            if loopPoints == "Example:\n{1,2}\n{3,4}" then
+                tool.AnimationPoints = "{" .. comp.CurrentTime .. "}"
+                return
             end
+
+            -- Create loopPointsTable from the string
+            for tableValue in string.gmatch(loopPoints, "([%d%.%\n]+)") do
+                if tableValue == "\n" then
+                    table.insert(loopPointsTable, {nil})
+                else
+                    table.insert(loopPointsTable[#loopPointsTable], tonumber(tableValue))
+                end
+            end
+            if loopPointsTable[#loopPointsTable][1] == nil then
+                loopPointsTable[#loopPointsTable] = nil
+            end
+
+            -- Add current frame to the table
+            table.insert(loopPointsTable, {comp.CurrentTime})
+            contextTimesTable[1] = 1
+            contextTimesTable[2] = #loopPointsTable
+
+            -- Reconstruct string from table
+            contextString = ""
+            for _, scene in pairs(loopPointsTable) do
+                contextString = contextString .. "{"
+                for __, value in pairs(scene) do
+                    contextString = contextString .. value .. ","
+                end
+                contextString = contextString .. "}\n"
+            end
+
+            tool.AnimationPoints = contextString
+            tool.Context = "Loop Num: " .. contextTimesTable[1] .. ", Scene Num: " .. contextTimesTable[2]
         ]],
     })
 
@@ -177,7 +214,7 @@ function Create()
             local contextTimesTable = {}
 
             -- Convert context text to numbers
-            contextTimesTable[1], contextTimesTable[2], contextTimesTable[3] = string.match(contextString, "Loop Num:%s*(%d+),%s*Scene Num:%s*(%d+)%s*(%+?)%s*$")
+            contextTimesTable[1], contextTimesTable[2] = string.match(contextString, "Loop Num:%s*(%d+),%s*Scene Num:%s*(%d+)$")
             contextTimesTable[1] = tonumber(contextTimesTable[1])
             contextTimesTable[2] = tonumber(contextTimesTable[2])
 
@@ -223,7 +260,7 @@ function Create()
             local contextTimesTable = {}
 
             -- Convert context text to numbers
-            contextTimesTable[1], contextTimesTable[2], contextTimesTable[3] = string.match(contextString, "Loop Num:%s*(%d+),%s*Scene Num:%s*(%d+)%s*(%+?)%s*$")
+            contextTimesTable[1], contextTimesTable[2] = string.match(contextString, "Loop Num:%s*(%d+),%s*Scene Num:%s*(%d+)$")
             contextTimesTable[1] = tonumber(contextTimesTable[1])
             contextTimesTable[2] = tonumber(contextTimesTable[2])
 
@@ -273,7 +310,7 @@ function Create()
             local contextTimesTable = {}
 
             -- Convert context text to numbers
-            contextTimesTable[1], contextTimesTable[2], contextTimesTable[3] = string.match(contextString, "Loop Num:%s*(%d+),%s*Scene Num:%s*(%d+)%s*(%+?)%s*$")
+            contextTimesTable[1], contextTimesTable[2] = string.match(contextString, "Loop Num:%s*(%d+),%s*Scene Num:%s*(%d+)$")
             contextTimesTable[1] = tonumber(contextTimesTable[1])
             contextTimesTable[2] = tonumber(contextTimesTable[2])
 
@@ -319,7 +356,7 @@ function Create()
             local contextTimesTable = {}
 
             -- Convert context text to numbers
-            contextTimesTable[1], contextTimesTable[2], contextTimesTable[3] = string.match(contextString, "Loop Num:%s*(%d+),%s*Scene Num:%s*(%d+)%s*(%+?)%s*$")
+            contextTimesTable[1], contextTimesTable[2] = string.match(contextString, "Loop Num:%s*(%d+),%s*Scene Num:%s*(%d+)$")
             contextTimesTable[1] = tonumber(contextTimesTable[1])
             contextTimesTable[2] = tonumber(contextTimesTable[2])
 
@@ -360,7 +397,7 @@ function Create()
             local contextTimesTable = {}
 
             -- Convert context text to numbers
-            contextTimesTable[1], contextTimesTable[2], contextTimesTable[3] = string.match(contextString, "Loop Num:%s*(%d+),%s*Scene Num:%s*(%d+)%s*(%+?)%s*$")
+            contextTimesTable[1], contextTimesTable[2] = string.match(contextString, "Loop Num:%s*(%d+),%s*Scene Num:%s*(%d+)$")
             contextTimesTable[1] = tonumber(contextTimesTable[1])
             contextTimesTable[2] = tonumber(contextTimesTable[2])
 
@@ -413,7 +450,7 @@ function Create()
         INP_Integer = true,
         INP_MinScale = 1,
         INP_MaxScale = 1,
-        INP_DoNotifyChanged = true,
+        INP_DoNotifyChanged = false,
     })
 
 --- @UI Merge Apply Mode:
@@ -510,7 +547,7 @@ function Create()
         INP_DoNotifyChanged = true,
         INP_Integer = true,
         INP_MinScale = 0.0,
-        INP_Default = 120,
+        INP_Default = 60,
     })
 
 --- @UI Track Length (Frames):
@@ -552,7 +589,7 @@ function Create()
         { CCS_AddString = "PunchInOut", },
     })
 
-    InMultiply = self:AddInput("Multiply", "Multiply", {
+    InMultiply = self:AddInput("Intensity", "Multiply", {
         INPID_InputControl = "SliderControl",
         INP_Default = 2,
         INP_Integer = false,
@@ -1008,7 +1045,7 @@ function Create()
         INP_DoNotifyChanged = true,
         INP_Integer = false,
         INP_MinScale = 0.0,
-        INP_Default = 5,
+        INP_Default = 2,
     })
 
 --- @UI Disable Rounding:
@@ -1340,7 +1377,12 @@ function Process(req)
     end
 
     -- Makes a blank canvas
-    local out = Image({IMG_NoData = true})  -- pg 79 https://www.steakunderwater.com/VFXPedia/96.0.243.189/index9205.html?title=Eyeon:Script/Reference/Applications/Fuse/Classes/Image/Attributes
+    -- pg 79 https://www.steakunderwater.com/VFXPedia/96.0.243.189/index9205.html?title=Eyeon:Script/Reference/Applications/Fuse/Classes/Image/Attributes
+    local out = Image({
+        IMG_Document = self.Comp,
+        IMG_Depth = 5, -- int8. See Fusion_Fuse_SDK page 80 for more information
+        IMG_NoData = true
+    })
     out:Clear()
 
     if Bypass == 1 then
