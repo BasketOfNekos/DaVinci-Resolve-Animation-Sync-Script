@@ -1560,7 +1560,7 @@ function NotifyChanged(inp, param, time)
             return
         else
             local _, SceneCount = param.Value:gsub("\n","")
-            InSceneNum:SetAttrs({INP_MaxScale = SceneCount + 1})
+            InSceneNum:SetAttrs({INP_MaxScale = SceneCount})
             InSceneNum:SetSource(Number(1), 0)
 
             SetLoopMax(param.Value, 1)
