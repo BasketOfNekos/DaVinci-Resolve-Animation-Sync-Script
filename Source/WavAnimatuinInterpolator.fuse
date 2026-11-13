@@ -481,7 +481,7 @@ function Create()
     InWav = self:AddInput("Wav File", "WavFile", {
         LINKID_DataType = "Text",
         INPID_InputControl = "FileControl",
-        FCS_FilterString = "MID Files (*.mid)|*.mid",
+        FCS_FilterString = "WAV Files (*.wav)|*.wav",
         INP_DoNotifyChanged = true,
         INP_Default = 1,
     })
@@ -1498,6 +1498,14 @@ end
 --- This runs when a UI parameter with the "INP_DoNotifyChanged" setting set to true.
 function NotifyChanged(inp, param, time)
 
+    -- TODO Currently not working. Strangely causes either errors or endless loops.
+    if inp == InSceneNum then
+        -- InLoopNum:SetSource(Number(1), 0)
+        SetLoopMax(InAnimationPoints:GetSource(time).Value, param.Value)
+        print("InSceneNum CHANGE")
+        return
+    end
+
     if inp == InWav or inp == InAddTime or inp == InRemoveTime then
         if param.Value == nil or param.Value == "" then
             return
@@ -1526,6 +1534,11 @@ function NotifyChanged(inp, param, time)
         end
     end
 
+    if inp == InFrameRate then
+        local deDupeFrames = param.Value / 60
+        InDeduplication:SetSource(Number(deDupeFrames), 0)
+    end
+
     InTrackLength:SetAttrs({INP_Default = 1}) -- Refreshes frame table and manual cache table
 
     -- Find the loop number for the scene we're currently on
@@ -1544,13 +1557,8 @@ function NotifyChanged(inp, param, time)
             loopPointsTable[#loopPointsTable] = nil
         end
 
-        InLoopNum:SetAttrs({INP_MaxScale = #loopPointsTable[SceneNum] - 1})
-    end
-
-    if inp == InSceneNum then
-        InLoopNum:SetSource(Number(1), 0)
-
-        SetLoopMax(InAnimationPoints:GetSource(time).Value, param.Value)
+        InLoopNum:SetAttrs({INP_MaxScale = #loopPointsTable[SceneNum] + 2})
+        print("Loop, ", #loopPointsTable[SceneNum] + 2)
     end
 
     -- updates InLoopNum's max value
@@ -1559,8 +1567,10 @@ function NotifyChanged(inp, param, time)
         if param.Value == nil or param.Value == "" or param.Value == "Example:\n{1,2}\n{3,4}" then
             return
         else
-            local _, SceneCount = param.Value:gsub("\n","")
-            InSceneNum:SetAttrs({INP_MaxScale = SceneCount})
+            local tempTable = param.Value:gsub("\n+$", "") -- Remove trailing \n
+            local _, SceneCount = tempTable:gsub("\n","")
+            print("Scene number, ", SceneCount + 1)
+            InSceneNum:SetAttrs({INP_MaxScale = SceneCount + 1})
             InSceneNum:SetSource(Number(1), 0)
 
             SetLoopMax(param.Value, 1)
